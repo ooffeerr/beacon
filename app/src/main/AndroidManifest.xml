@@ -46,6 +46,8 @@
         </activity>
         <activity android:name="com.aprilbrother.aprilbeacondemo.EddyStoneModifyActivity" >
         </activity>
+
+        <activity android:name=".SenderActivity"/>
         
 
         <!-- 扫描beacon的服务 -->

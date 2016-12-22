@@ -12,6 +12,8 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.AdapterView;
@@ -49,7 +51,6 @@ public class BeaconList extends Activity {
 	// "aa000000-0000-0000-0000-000000000000",
 	// null, null);
 	private BeaconAdapter adapter;
-	private BeaconManager beaconManager;
 	private ArrayList<Beacon> myBeacons;
 
 	@Override
@@ -57,6 +58,33 @@ public class BeaconList extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		init();
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		// Inflate the menu; this adds items to the action bar if it is present.
+		getMenuInflater().inflate(R.menu.menu_main, menu);
+		return true;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		// Handle action bar item clicks here. The action bar will
+		// automatically handle clicks on the Home/Up button, so long
+		// as you specify a parent activity in AndroidManifest.xml.
+		int id = item.getItemId();
+
+		//noinspection SimplifiableIfStatement
+		if (id == R.id.action_name) {
+			gotoSenderActivity();
+			return true;
+		}
+
+		return super.onOptionsItemSelected(item);
+	}
+
+	private void gotoSenderActivity() {
+		startActivity(new Intent(this, SenderActivity.class));
 	}
 
 	private void init() {
@@ -68,11 +96,11 @@ public class BeaconList extends Activity {
 
 		// 此处上下文需要是Activity或者Serivce
 		// 若在FragmentActivit或者其他Activity子类中使用 上下文请使用getApplicationContext
-		beaconManager = new BeaconManager(getApplicationContext());
+//		beaconManager = new BeaconManager(getApplicationContext());
 		// beaconManager.setMonitoringExpirationMill(10L);
 		// beaconManager.setRangingExpirationMill(10L);
 		// beaconManager.setForegroundScanPeriod(2000, 0);
-		beaconManager.setRangingListener(new RangingListener() {
+		BeaconManagerWrapper.getInstance(getApplicationContext()).setRangingListener(new RangingListener() {
 
 			@Override
 			public void onBeaconsDiscovered(Region region,
@@ -91,7 +119,7 @@ public class BeaconList extends Activity {
 			}
 		});
 
-		beaconManager.setMonitoringListener(new MonitoringListener() {
+		BeaconManagerWrapper.getInstance(getApplicationContext()).setMonitoringListener(new MonitoringListener() {
 
 			@Override
 			public void onExitedRegion(Region region) {
@@ -131,14 +159,14 @@ public class BeaconList extends Activity {
 				if (tv.getText().equals("开启扫描")) {
 					try {
 						tv.setText("停止扫描");
-						beaconManager.startRanging(ALL_BEACONS_REGION);
+						BeaconManagerWrapper.getInstance(getApplicationContext()).startRanging(ALL_BEACONS_REGION);
 					} catch (RemoteException e) {
 						e.printStackTrace();
 					}
 				} else {
 					try {
 						tv.setText("开启扫描");
-						beaconManager.stopRanging(ALL_BEACONS_REGION);
+						BeaconManagerWrapper.getInstance(getApplicationContext()).stopRanging(ALL_BEACONS_REGION);
 					} catch (RemoteException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -165,12 +193,12 @@ public class BeaconList extends Activity {
 		Log.i(TAG, "connectToService");
 		getActionBar().setSubtitle("Scanning...");
 		adapter.replaceWith(Collections.<Beacon> emptyList());
-		beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
+		BeaconManagerWrapper.getInstance(getApplicationContext()).connect(new BeaconManager.ServiceReadyCallback() {
 			@Override
 			public void onServiceReady() {
 				try {
 					Log.i(TAG, "connectToService");
-					beaconManager.startRanging(ALL_BEACONS_REGION);
+					BeaconManagerWrapper.getInstance(getApplicationContext()).startRanging(ALL_BEACONS_REGION);
 					// beaconManager.startMonitoring(ALL_BEACONS_REGION);
 				} catch (RemoteException e) {
 					e.printStackTrace();
@@ -197,12 +225,12 @@ public class BeaconList extends Activity {
 	protected void onStart() {
 		super.onStart();
 
-		if (!beaconManager.hasBluetooth()) {
+		if (!BeaconManagerWrapper.getInstance(getApplicationContext()).hasBluetooth()) {
 			Toast.makeText(this, "Device does not have Bluetooth Low Energy",
 					Toast.LENGTH_LONG).show();
 			return;
 		}
-		if (!beaconManager.isBluetoothEnabled()) {
+		if (!BeaconManagerWrapper.getInstance(getApplicationContext()).isBluetoothEnabled()) {
 			Intent enableBtIntent = new Intent(
 					BluetoothAdapter.ACTION_REQUEST_ENABLE);
 			startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
@@ -220,8 +248,8 @@ public class BeaconList extends Activity {
 	protected void onStop() {
 		try {
 			myBeacons.clear();
-			beaconManager.stopRanging(ALL_BEACONS_REGION);
-			beaconManager.disconnect();
+			BeaconManagerWrapper.getInstance(getApplicationContext()).stopRanging(ALL_BEACONS_REGION);
+			BeaconManagerWrapper.getInstance(getApplicationContext()).disconnect();
 		} catch (RemoteException e) {
 			Log.d(TAG, "Error while stopping ranging", e);
 		}
