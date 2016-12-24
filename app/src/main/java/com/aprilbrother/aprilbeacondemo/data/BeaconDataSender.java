@@ -88,7 +88,7 @@ http://52.58.103.202:10080/remu_portals/?req={%22d%22:0,%22e%22:%22fda50693-a4e2
     public void onBeaconsDiscovered(Region region, List<Beacon> list) {
         Log.d(TAG, "onBeaconsDiscovered() called with: " + "region = [" + region + "], list = [" + list + "]");
         if (list != null && !list.isEmpty()) {
-            String json = gson.toJson(new BeaconReq(list.get(0), deviceId));
+            String json = gson.toJson(new BeaconReq(list, deviceId));
             Log.d(TAG, "onBeaconsDiscovered: sending " + json);
             Call<Void> voidCall = apiService.setBeaconData(json);
             voidCall.enqueue(new Callback<Void>() {

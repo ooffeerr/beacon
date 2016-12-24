@@ -132,7 +132,7 @@ public class BeaconList extends Activity {
 		}
 
 		sender = new BeaconDataSender(BeaconManagerWrapper.getInstance(getApplicationContext()));
-//		sender.registerToBeaconCallbackAndSend();
+		sender.deviceId = identifierString;
 	}
 
 	private void gotoSenderActivity() {
@@ -171,6 +171,7 @@ public class BeaconList extends Activity {
 				adapter.replaceWith(myBeacons);
 
 				if (sender != null) {
+					getActionBar().setTitle("Sending to Server!");
 					sender.onBeaconsDiscovered(region, beacons);
 				}
 			}
