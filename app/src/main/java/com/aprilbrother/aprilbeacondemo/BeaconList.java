@@ -5,12 +5,15 @@ import java.util.Collections;
 import java.util.List;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.bluetooth.BluetoothAdapter;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.support.v4.app.FragmentActivity;
+import android.text.InputType;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -18,10 +21,12 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.aprilbrother.aprilbeacondemo.data.BeaconDataSender;
 import com.aprilbrother.aprilbrothersdk.Beacon;
 import com.aprilbrother.aprilbrothersdk.BeaconManager;
 import com.aprilbrother.aprilbrothersdk.BeaconManager.MonitoringListener;
@@ -39,7 +44,7 @@ public class BeaconList extends Activity {
 	// "e2c56db5-dffb-48d2-b060-d0f5a71096e3",
 	// null, null);
 
-	private static final Region ALL_BEACONS_REGION = new Region("customRegionName", null,
+	static final Region ALL_BEACONS_REGION = new Region("customRegionName", null,
 			null, null);
 	private static final Region TEST_ALL_BEACONS_REGION = new Region("customRegionName",
 			null, 2, null);
@@ -52,12 +57,15 @@ public class BeaconList extends Activity {
 	// null, null);
 	private BeaconAdapter adapter;
 	private ArrayList<Beacon> myBeacons;
+	private String identifierString;
+	private AlertDialog identifierStringDialog;
+	private BeaconDataSender sender;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		init();
+//		init();
 	}
 
 	@Override
@@ -76,11 +84,55 @@ public class BeaconList extends Activity {
 
 		//noinspection SimplifiableIfStatement
 		if (id == R.id.action_name) {
-			gotoSenderActivity();
+//			gotoSenderActivity();
+			showTextDialog();
+
 			return true;
 		}
 
 		return super.onOptionsItemSelected(item);
+	}
+
+	private void showTextDialog() {
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setTitle("Please enter an identifier String");
+
+		final EditText input = new EditText(this);
+		input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+		builder.setView(input);
+
+		builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				identifierString = input.getText().toString();
+				Log.d(TAG, "deviceId =  " + identifierString);
+				sendBeaconData(identifierString);
+			}
+		});
+		builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				dialog.cancel();
+//				finish();
+			}
+		}).setOnCancelListener(new DialogInterface.OnCancelListener() {
+			@Override
+			public void onCancel(DialogInterface dialogInterface) {
+//				finish();
+			}
+		});
+
+		identifierStringDialog = builder.show();
+	}
+
+	private void sendBeaconData(String identifierString) {
+		if (myBeacons == null || myBeacons.isEmpty()) {
+			Log.e(TAG, "no beacons, aborting send");
+			return;
+		}
+
+		sender = new BeaconDataSender(BeaconManagerWrapper.getInstance(getApplicationContext()));
+//		sender.registerToBeaconCallbackAndSend();
 	}
 
 	private void gotoSenderActivity() {
@@ -88,6 +140,7 @@ public class BeaconList extends Activity {
 	}
 
 	private void init() {
+		Log.d(TAG, "init() called with: " + "");
 		myBeacons = new ArrayList<Beacon>();
 		ListView lv = (ListView) findViewById(R.id.lv);
 		adapter = new BeaconAdapter(this);
@@ -116,6 +169,10 @@ public class BeaconList extends Activity {
 				ComparatorBeaconByRssi com = new ComparatorBeaconByRssi();
 				Collections.sort(myBeacons, com);
 				adapter.replaceWith(myBeacons);
+
+				if (sender != null) {
+					sender.onBeaconsDiscovered(region, beacons);
+				}
 			}
 		});
 
@@ -158,6 +215,7 @@ public class BeaconList extends Activity {
 			public void onClick(View v) {
 				if (tv.getText().equals("开启扫描")) {
 					try {
+						Log.d(TAG, "starting to range");
 						tv.setText("停止扫描");
 						BeaconManagerWrapper.getInstance(getApplicationContext()).startRanging(ALL_BEACONS_REGION);
 					} catch (RemoteException e) {
@@ -166,6 +224,8 @@ public class BeaconList extends Activity {
 				} else {
 					try {
 						tv.setText("开启扫描");
+						Log.d(TAG, "stopping range");
+
 						BeaconManagerWrapper.getInstance(getApplicationContext()).stopRanging(ALL_BEACONS_REGION);
 					} catch (RemoteException e) {
 						// TODO Auto-generated catch block
@@ -224,7 +284,7 @@ public class BeaconList extends Activity {
 	@Override
 	protected void onStart() {
 		super.onStart();
-
+		init();
 		if (!BeaconManagerWrapper.getInstance(getApplicationContext()).hasBluetooth()) {
 			Toast.makeText(this, "Device does not have Bluetooth Low Energy",
 					Toast.LENGTH_LONG).show();
@@ -252,6 +312,14 @@ public class BeaconList extends Activity {
 			BeaconManagerWrapper.getInstance(getApplicationContext()).disconnect();
 		} catch (RemoteException e) {
 			Log.d(TAG, "Error while stopping ranging", e);
+		}
+
+		if (identifierStringDialog != null) {
+			identifierStringDialog.dismiss();
+		}
+
+		if (sender != null) {
+			sender.stopSending();
 		}
 		super.onStop();
 	}
